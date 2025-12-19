@@ -37,5 +37,5 @@ Data is stored in an in-memory list (no database), for learning purposes.
 5. Open:
     <http://127.0.0.1:8000>
     <http://127.0.0.1:8000/health>
-    <http://127.0.0.1:8000/health>
+    <http://127.0.0.1:8000/items>
     <http://127.0.0.1:8000/docs>
