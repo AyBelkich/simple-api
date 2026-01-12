@@ -1,8 +1,18 @@
 from typing import Optional
-from fastapi import FastAPI, HTTPException, status
+import logging
+import os
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI()  # I create my FastAPI app object (this is where I register all routes/endpoints).
+
+# --- Config (environment variables) ---
+# If APP_ENV is not set, default to "dev"
+APP_ENV = os.getenv("APP_ENV", "dev")
+
+# --- Logging setup ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ----------------------------
 # Models
@@ -46,10 +56,11 @@ def ensure_unique_name(name: str) -> None:
 # ----------------------------
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}  # I return a simple response to show the API is running.
+    return {"status": "ok", "env": APP_ENV}  # I return a simple response to show the API is running and which environment it's in.
 
 @app.get("/items", response_model=list[Item])
 def get_items():
+    logger.info("List items (count=%d)", len(items))  # I log how many items are being returned.
     return items  # I return the full list of stored items.
 
 @app.post("/items", status_code=201)
@@ -65,6 +76,8 @@ def create_item(item: ItemCreate):
     )
 
     items.append(new_item)  # I save the new item in my in-memory list.
+    logger.info("Created item id=%d name=%s", new_item.id, new_item.name)  # I log the creation of the new item.
+
     next_id += 1  # I increment the counter so the next item gets a new ID.
     return new_item  # I return the created item (client can see the generated ID).
 
@@ -72,13 +85,19 @@ def create_item(item: ItemCreate):
 def get_item(item_id: int):
     item = find_item(item_id)  # I look up the item by ID.
     if item is None:  # If it doesn't exist...
+        logger.warning("Item not found id=%d", item_id)  # I log a warning.
         raise HTTPException(status_code=404, detail="Item not found")  # ...I return a 404 Not Found error.
+    
+    logger.info("Retrieved item id=%d", item.id)  # I log the retrieval of the item.
     return item  # Otherwise I return the item.
 
 @app.delete("/items/{item_id}", status_code=204)
 def delete_item(item_id: int):
     item = find_item(item_id)  # I look up the item I want to delete.
     if item is None:  # If it doesn't exist...
+        logger.warning("Item not found for deletion id=%d", item_id)  # I log a warning.
         raise HTTPException(status_code=404, detail="Item not found")  # ...I return 404.
+    
+    logger.info("Deleted item id=%d", item.id)  # I log the deletion of the item.
     items.remove(item)  # If it exists, I remove it from the list.
     return  # I return nothing because 204 means "No Content".
